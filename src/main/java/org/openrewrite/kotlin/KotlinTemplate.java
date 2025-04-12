@@ -24,14 +24,22 @@ import org.openrewrite.java.tree.JavaCoordinates;
 import org.openrewrite.kotlin.internal.template.KotlinSubstitutions;
 import org.openrewrite.kotlin.internal.template.KotlinTemplateParser;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 
 public class KotlinTemplate extends JavaTemplate {
-    private KotlinTemplate(boolean contextSensitive, KotlinParser.Builder parser, String code, Set<String> imports, Consumer<String> onAfterVariableSubstitution, Consumer<String> onBeforeParseTemplate) {
+    private KotlinTemplate(boolean contextSensitive,
+                           KotlinParser.Builder parser,
+                           String code,
+                           Set<String> genericTypes,
+                           Set<String> imports,
+                           Consumer<String> onAfterVariableSubstitution,
+                           Consumer<String> onBeforeParseTemplate) {
         super(
                 code,
+                genericTypes,
                 onAfterVariableSubstitution,
                 new KotlinTemplateParser(
                         contextSensitive,
@@ -49,11 +57,12 @@ public class KotlinTemplate extends JavaTemplate {
 
     @Override
     protected Substitutions substitutions(Object[] parameters) {
-        return new KotlinSubstitutions(getCode(), parameters);
+        return new KotlinSubstitutions(getCode(), getGenericTypes(), parameters);
     }
 
     public static <J2 extends J> J2 apply(String template, Cursor scope, JavaCoordinates coordinates, Object... parameters) {
-        return builder(template).build().apply(scope, coordinates, parameters);
+        return builder(template).build()
+                                .apply(scope, coordinates, parameters);
     }
 
     public static Builder builder(String code) {
@@ -61,13 +70,15 @@ public class KotlinTemplate extends JavaTemplate {
     }
 
     public static boolean matches(String template, Cursor cursor) {
-        return builder(template).build().matches(cursor);
+        return builder(template).build()
+                                .matches(cursor);
     }
 
     @SuppressWarnings("unused")
     public static class Builder extends JavaTemplate.Builder {
 
         private final String code;
+        private final Set<String> genericTypes = new HashSet<>();
         private final Set<String> imports = new HashSet<>();
 
         private KotlinParser.Builder parser = KotlinParser.builder();
@@ -118,9 +129,14 @@ public class KotlinTemplate extends JavaTemplate {
             return this;
         }
 
+        public Builder genericTypes(String... genericTypes) {
+            Collections.addAll(this.genericTypes, genericTypes);
+            return this;
+        }
+
         @Override
         public KotlinTemplate build() {
-            return new KotlinTemplate(false, parser, code, imports,
+            return new KotlinTemplate(false, parser, code, genericTypes, imports,
                     onAfterVariableSubstitution, onBeforeParseTemplate);
         }
     }
